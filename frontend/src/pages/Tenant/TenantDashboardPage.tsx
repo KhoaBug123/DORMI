@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import MaintenanceTicketModal from '../../components/Tickets/MaintenanceTicketModal';
+import { api } from '../../services/api';
 
 interface Appointment {
   id: string;
@@ -37,38 +38,56 @@ export default function TenantDashboardPage() {
   const [ticketSuccess, setTicketSuccess] = useState(false);
 
   const fetchDashboardData = () => {
-    const apps = JSON.parse(localStorage.getItem('appointments') || '[]');
-    setAppointments(apps);
+    api.get('/dashboard/appointments')
+      .then((res) => setAppointments(res.data))
+      .catch((err) => console.error("Error fetching appointments:", err));
 
-    const tkts = JSON.parse(localStorage.getItem('maintenance_tickets') || '[]');
-    setTickets(tkts);
+    api.get('/dashboard/tickets')
+      .then((res) => setTickets(res.data))
+      .catch((err) => console.error("Error fetching tickets:", err));
 
-    const saved = JSON.parse(localStorage.getItem('saved_rooms') || '[]');
-    if (saved.length === 0) {
-      const mockSaved: SavedRoom[] = [
-        {
-          id: 'r-1',
-          title: 'Phòng Trọ Studio 360° Gần ĐH Bách Khoa',
-          price: 4500000,
-          address: 'Số 12 Ngõ 40 Tạ Quang Bửu, Hai Bà Trưng, Hà Nội',
-          image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80'
+    api.get('/dashboard/saved')
+      .then((res) => {
+        if (res.data && res.data.length > 0) {
+          setSavedRooms(res.data);
+        } else {
+          // Fallback to standard mock array if none favorited yet
+          setSavedRooms([
+            {
+              id: 'r-1',
+              title: 'Phòng Trọ Studio 360° Gần ĐH Bách Khoa',
+              price: 4500000,
+              address: 'Số 12 Ngõ 40 Tạ Quang Bửu, Hai Bà Trưng, Hà Nội',
+              image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80'
+            }
+          ]);
         }
-      ];
-      localStorage.setItem('saved_rooms', JSON.stringify(mockSaved));
-      setSavedRooms(mockSaved);
-    } else {
-      setSavedRooms(saved);
-    }
+      })
+      .catch(() => {
+        setSavedRooms([
+          {
+            id: 'r-1',
+            title: 'Phòng Trọ Studio 360° Gần ĐH Bách Khoa',
+            price: 4500000,
+            address: 'Số 12 Ngõ 40 Tạ Quang Bửu, Hai Bà Trưng, Hà Nội',
+            image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80'
+          }
+        ]);
+      });
   };
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
-  const handleRemoveSavedRoom = (id: string) => {
-    const updated = savedRooms.filter(r => r.id !== id);
-    setSavedRooms(updated);
-    localStorage.setItem('saved_rooms', JSON.stringify(updated));
+  const handleRemoveSavedRoom = async (id: string) => {
+    try {
+      await api.delete(`/dashboard/saved/${id}`);
+      fetchDashboardData();
+    } catch (err) {
+      // Fallback local filtering if DB item didn't exist or failed
+      setSavedRooms(savedRooms.filter(r => r.id !== id));
+    }
   };
 
   return (

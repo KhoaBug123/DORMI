@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { api } from '../../services/api';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
@@ -15,16 +16,17 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     
-    setTimeout(() => {
-      login('mock-jwt-token', role, {
-        id: `new-${Date.now()}`,
-        name,
-        email,
-        isVerified: role === 'landlord' ? false : undefined
+    api.post('/auth/register', { email, password, fullName: name, role })
+      .then((res) => {
+        const { token, role: resRole, user: resUser } = res.data;
+        login(token, resRole, resUser);
+        setLoading(false);
+        navigate(resRole === 'tenant' ? '/' : '/kyc');
+      })
+      .catch((err) => {
+        alert(err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.");
+        setLoading(false);
       });
-      setLoading(false);
-      navigate(role === 'tenant' ? '/' : '/kyc');
-    }, 1000);
   };
 
   return (

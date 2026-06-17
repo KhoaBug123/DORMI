@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { validateEquirectangularRatio } from '../../utils/imageValidation';
+import { api } from '../../services/api';
 
 export default function CreateRoomPage() {
   const navigate = useNavigate();
@@ -61,15 +62,36 @@ export default function CreateRoomPage() {
     e.preventDefault();
     setLoading(true);
 
-    // Giả lập lưu tin đăng
-    setTimeout(() => {
-      setLoading(false);
-      setSuccess(true);
-      
-      setTimeout(() => {
-        navigate('/landlord/dashboard');
-      }, 2000);
-    }, 1500);
+    const utilsList = [];
+    if (wifi) utilsList.push("Wi-Fi Free");
+    if (ac) utilsList.push("Điều hòa (AC)");
+    if (parking) utilsList.push("Bãi đỗ xe");
+    if (privateBath) utilsList.push("WC khép kín");
+    const utilitiesString = utilsList.join(",");
+
+    api.post('/rooms', {
+      title,
+      address,
+      price: Number(price),
+      area: 25.0, // default area
+      roomType: type,
+      utilities: utilitiesString,
+      description,
+      university,
+      primaryImageUrl: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80",
+      virtual3DUrl: photo360 ? "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Polarlicht_2.jpg/2560px-Polarlicht_2.jpg" : null
+    })
+      .then(() => {
+        setLoading(false);
+        setSuccess(true);
+        setTimeout(() => {
+          navigate('/landlord/dashboard');
+        }, 2000);
+      })
+      .catch((err) => {
+        alert(err.response?.data?.message || "Đăng tin phòng trọ thất bại.");
+        setLoading(false);
+      });
   };
 
   return (

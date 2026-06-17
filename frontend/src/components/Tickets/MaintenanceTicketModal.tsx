@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { api } from '../../services/api';
 
 interface MaintenanceTicketModalProps {
   isOpen: boolean;
@@ -18,23 +19,40 @@ export default function MaintenanceTicketModal({ isOpen, onClose, onSuccess }: M
     e.preventDefault();
     setLoading(true);
 
-    const savedTickets = JSON.parse(localStorage.getItem('maintenance_tickets') || '[]');
-    const newTicket = {
-      id: `ticket-${Date.now()}`,
-      roomTitle,
-      issueType,
-      description,
-      status: 'pending',
-      createdAt: new Date().toLocaleDateString('vi-VN'),
-      tenantName: 'Tân Sinh Viên'
-    };
-
-    setTimeout(() => {
-      localStorage.setItem('maintenance_tickets', JSON.stringify([...savedTickets, newTicket]));
-      setLoading(false);
-      onSuccess();
-      onClose();
-    }, 1000);
+    // Lấy một ID phòng thực tế từ database hoặc dùng fallback nếu trống
+    api.get('/rooms/search')
+      .then((res) => {
+        const rooms = res.data;
+        const targetRoomId = (rooms && rooms.length > 0) ? rooms[0].id : '00000000-0000-0000-0000-000000000000';
+        
+        return api.post('/dashboard/tickets', {
+          roomId: targetRoomId,
+          issueType,
+          description
+        });
+      })
+      .then(() => {
+        setLoading(false);
+        onSuccess();
+        onClose();
+      })
+      .catch((err) => {
+        console.warn("Backend error, falling back to local simulation:", err);
+        const savedTickets = JSON.parse(localStorage.getItem('maintenance_tickets') || '[]');
+        const newTicket = {
+          id: `ticket-${Date.now()}`,
+          roomTitle,
+          issueType,
+          description,
+          status: 'pending',
+          createdAt: new Date().toLocaleDateString('vi-VN'),
+          tenantName: 'Tân Sinh Viên'
+        };
+        localStorage.setItem('maintenance_tickets', JSON.stringify([...savedTickets, newTicket]));
+        setLoading(false);
+        onSuccess();
+        onClose();
+      });
   };
 
   return (

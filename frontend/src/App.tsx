@@ -14,6 +14,7 @@ import RoommateMatchesPage from './pages/Tenant/RoommateMatchesPage';
 import ChatPage from './pages/Chat/ChatPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/useAuthStore';
+import RoomDetailPage from './pages/Tenant/RoomDetailPage';
 
 // ---------------------------------------------------------------------------
 // Navigation Bar
@@ -440,6 +441,7 @@ function App() {
         <Route path="/tour-demo" element={<TourDemoPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/room/:id" element={<RoomDetailPage />} />
 
         {/* Protected Routes for KYC Verification */}
         <Route 

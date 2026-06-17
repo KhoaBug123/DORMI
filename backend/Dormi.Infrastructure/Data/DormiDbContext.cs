@@ -17,6 +17,7 @@ public class DormiDbContext : DbContext
     public DbSet<ViewingAppointment> ViewingAppointments { get; set; } = null!;
     public DbSet<FavoriteRoom> FavoriteRooms { get; set; } = null!;
     public DbSet<Message> Messages { get; set; } = null!;
+    public DbSet<MaintenanceTicket> MaintenanceTickets { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,5 +71,18 @@ public class DormiDbContext : DbContext
             .WithMany(u => u.ReceivedMessages)
             .HasForeignKey(m => m.ReceiverId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Maintenance Tickets
+        modelBuilder.Entity<MaintenanceTicket>()
+            .HasOne(t => t.Room)
+            .WithMany()
+            .HasForeignKey(t => t.RoomId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MaintenanceTicket>()
+            .HasOne(t => t.Customer)
+            .WithMany()
+            .HasForeignKey(t => t.CustomerId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

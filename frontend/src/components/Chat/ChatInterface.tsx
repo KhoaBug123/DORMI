@@ -2,12 +2,49 @@ import { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../../store/useChatStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { chatService } from '../../services/chatService';
+import { api } from '../../services/api';
 
 export default function ChatInterface() {
   const { user, token } = useAuthStore();
-  const { contacts, messages, activeContactId, setActiveContactId, sendMessage, receiveMessage, addContact } = useChatStore();
+  const { 
+    contacts, 
+    messages, 
+    activeContactId, 
+    setActiveContactId, 
+    sendMessage, 
+    receiveMessage, 
+    addContact,
+    setContacts,
+    setMessages
+  } = useChatStore();
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Nạp danh sách contacts từ API
+  useEffect(() => {
+    if (token) {
+      api.get('/chat/contacts')
+        .then((res) => {
+          setContacts(res.data);
+        })
+        .catch((err) => {
+          console.error("Error fetching contacts from API:", err);
+        });
+    }
+  }, [token, setContacts]);
+
+  // Nạp lịch sử tin nhắn khi activeContactId thay đổi
+  useEffect(() => {
+    if (token && activeContactId) {
+      api.get(`/chat/messages/${activeContactId}`)
+        .then((res) => {
+          setMessages(activeContactId, res.data);
+        })
+        .catch((err) => {
+          console.error("Error fetching message history from API:", err);
+        });
+    }
+  }, [token, activeContactId, setMessages]);
 
   // Nhận contact được chuyển từ trang tìm roommate hoặc bản đồ
   useEffect(() => {

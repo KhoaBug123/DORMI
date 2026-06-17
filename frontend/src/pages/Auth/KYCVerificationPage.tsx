@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { api } from '../../services/api';
 
 export default function KYCVerificationPage() {
   const [cccdFront, setCccdFront] = useState<File | null>(null);
@@ -20,14 +21,24 @@ export default function KYCVerificationPage() {
     setLoading(true);
     setVerifyStep('🔍 Đang kiểm tra định dạng tệp ảnh...');
     
-    // Giả lập từng bước phân tích OCR AI của FPT.AI
+    const formData = new FormData();
+    formData.append('cccdFront', cccdFront);
+    formData.append('cccdBack', cccdBack);
+    formData.append('selfie', selfie);
+
+    // Giả lập từng bước phân tích OCR AI và gửi API thật để kích hoạt database
     setTimeout(() => {
       setVerifyStep('📇 Đang phân tích OCR quét thông tin CCCD...');
       
       setTimeout(() => {
         setVerifyStep('👤 Đang đối sánh khuôn mặt Selfie với ảnh thẻ...');
         
-        setTimeout(() => {
+        api.post('/auth/kyc', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        .then(() => {
           setVerifyStep('🛡️ Đang xác thực mã bảo mật vân tay chống giả mạo...');
           
           setTimeout(() => {
@@ -38,9 +49,13 @@ export default function KYCVerificationPage() {
             setTimeout(() => {
               navigate('/landlord/dashboard');
             }, 2000);
-          }, 1200);
-        }, 1200);
-      }, 1200);
+          }, 1000);
+        })
+        .catch((err) => {
+          alert(err.response?.data?.message || "Xác thực định danh eKYC thất bại.");
+          setLoading(false);
+        });
+      }, 1000);
     }, 1000);
   };
 

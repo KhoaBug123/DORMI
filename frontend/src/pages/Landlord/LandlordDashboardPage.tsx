@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { api } from '../../services/api';
 
 interface Appointment {
   id: string;
@@ -26,71 +27,36 @@ export default function LandlordDashboardPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
 
-  useEffect(() => {
-    const savedApps = JSON.parse(localStorage.getItem('appointments') || '[]');
-    if (savedApps.length === 0) {
-      const mockApps: Appointment[] = [
-        {
-          id: 'app-mock-1',
-          roomId: 'r-1',
-          roomTitle: 'Phòng Trọ Studio 360° Gần ĐH Bách Khoa',
-          date: '2026-06-18',
-          time: '09:30',
-          status: 'pending',
-          tenantName: 'Lê Quốc Khánh',
-          tenantPhone: '0987654321'
-        },
-        {
-          id: 'app-mock-2',
-          roomId: 'r-2',
-          roomTitle: 'Nhà Ở Ghép Homestay Giá Rẻ NEU',
-          date: '2026-06-20',
-          time: '15:00',
-          status: 'accepted',
-          tenantName: 'Nguyễn Văn Hải',
-          tenantPhone: '0912345678'
-        }
-      ];
-      localStorage.setItem('appointments', JSON.stringify(mockApps));
-      setAppointments(mockApps);
-    } else {
-      setAppointments(savedApps);
-    }
+  const fetchDashboardData = () => {
+    api.get('/dashboard/appointments')
+      .then((res) => setAppointments(res.data))
+      .catch((err) => console.error("Error fetching appointments:", err));
 
-    const savedTickets = JSON.parse(localStorage.getItem('maintenance_tickets') || '[]');
-    if (savedTickets.length === 0) {
-      const mockTickets: MaintenanceTicket[] = [
-        {
-          id: 'ticket-mock-1',
-          roomTitle: 'Phòng Trọ Studio 360° Gần ĐH Bách Khoa',
-          issueType: 'Điện nước',
-          description: 'Hỏng vòi nước bồn tắm chảy lênh láng nhà vệ sinh.',
-          status: 'pending',
-          createdAt: '2026-06-14',
-          tenantName: 'Lê Quốc Khánh'
-        }
-      ];
-      localStorage.setItem('maintenance_tickets', JSON.stringify(mockTickets));
-      setTickets(mockTickets);
-    } else {
-      setTickets(savedTickets);
-    }
-  }, []);
-
-  const handleUpdateAppointment = (id: string, newStatus: 'accepted' | 'declined') => {
-    const updated = appointments.map((app) => 
-      app.id === id ? { ...app, status: newStatus } : app
-    );
-    setAppointments(updated);
-    localStorage.setItem('appointments', JSON.stringify(updated));
+    api.get('/dashboard/tickets')
+      .then((res) => setTickets(res.data))
+      .catch((err) => console.error("Error fetching tickets:", err));
   };
 
-  const handleUpdateTicket = (id: string, newStatus: 'fixing' | 'completed') => {
-    const updated = tickets.map((t) => 
-      t.id === id ? { ...t, status: newStatus } : t
-    );
-    setTickets(updated);
-    localStorage.setItem('maintenance_tickets', JSON.stringify(updated));
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const handleUpdateAppointment = async (id: string, newStatus: 'accepted' | 'declined') => {
+    try {
+      await api.put(`/dashboard/appointments/${id}/status`, { status: newStatus });
+      fetchDashboardData();
+    } catch (err) {
+      alert("Cập nhật lịch hẹn thất bại.");
+    }
+  };
+
+  const handleUpdateTicket = async (id: string, newStatus: 'fixing' | 'completed') => {
+    try {
+      await api.put(`/dashboard/tickets/${id}/status`, { status: newStatus });
+      fetchDashboardData();
+    } catch (err) {
+      alert("Cập nhật sự cố thất bại.");
+    }
   };
 
   const stats = {

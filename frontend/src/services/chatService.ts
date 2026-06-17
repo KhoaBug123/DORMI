@@ -2,7 +2,7 @@ import * as signalR from '@microsoft/signalr';
 
 class ChatService {
   private connection: signalR.HubConnection | null = null;
-  private isMockMode = true;
+  private isMockMode = false;
 
   public async connect(token: string): Promise<boolean> {
     try {
@@ -19,8 +19,8 @@ class ChatService {
       console.log('SignalR connected successfully.');
       return true;
     } catch (err) {
-      console.warn('Backend offline, running in Mock Chat mode:', err);
-      this.isMockMode = true;
+      console.error('Failed to connect to SignalR chathub:', err);
+      this.isMockMode = false;
       return false;
     }
   }

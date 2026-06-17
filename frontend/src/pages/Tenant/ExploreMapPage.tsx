@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { api } from '../../services/api';
 
 // Custom icons workarounds for Vite
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -152,19 +153,42 @@ export default function ExploreMapPage() {
 
   // States khác
   const [mapCenter, setMapCenter] = useState<[number, number]>([21.0062, 105.8431]);
+  const [rooms, setRooms] = useState<RoomListing[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<RoomListing | null>(null);
   const [appointmentSuccess, setAppointmentSuccess] = useState<string | null>(null);
   const [showAmenitiesDropdown, setShowAmenitiesDropdown] = useState(false);
 
+  // Nạp danh sách phòng trọ thực từ API theo định vị
+  useEffect(() => {
+    const [lat, lng] = mapCenter;
+    api.get(`/rooms/search?lat=${lat}&lng=${lng}&radius=${radius}`)
+      .then((res) => {
+        if (res.data && res.data.length > 0) {
+          setRooms(res.data);
+        } else {
+          setRooms(MOCK_ROOMS);
+        }
+      })
+      .catch((err) => {
+        console.warn("Backend offline, sử dụng dữ liệu demo:", err);
+        setRooms(MOCK_ROOMS);
+      });
+  }, [mapCenter, radius]);
+
+  // Điều phối mapCenter dựa trên Đại học lựa chọn
+  useEffect(() => {
+    if (university === 'bách khoa') setMapCenter([21.0085, 105.8455]);
+    else if (university === 'kinh tế quốc dân') setMapCenter([21.0022, 105.8410]);
+    else if (university === 'ngoại thương') setMapCenter([21.0125, 105.7995]);
+    else if (university === 'quốc gia') setMapCenter([21.0370, 105.7820]);
+  }, [university]);
+
   const filteredRooms = useMemo(() => {
-    return MOCK_ROOMS.filter((room) => {
+    return rooms.filter((room) => {
       if (searchQuery && !room.title.toLowerCase().includes(searchQuery.toLowerCase()) && !room.address.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
       }
-      if (university !== 'all' && room.university !== university) {
-        return false;
-      }
-      if (university !== 'all' && room.distance > radius) {
+      if (university !== 'all' && room.university !== university && room.distance > radius) {
         return false;
       }
       if (priceRange !== 'all') {
@@ -183,22 +207,25 @@ export default function ExploreMapPage() {
 
       return true;
     });
-  }, [searchQuery, university, radius, priceRange, onlyVerified, wifi, ac, parking, privateBath]);
+  }, [rooms, searchQuery, university, radius, priceRange, onlyVerified, wifi, ac, parking, privateBath]);
 
-  const handleBookAppointment = (roomId: string, title: string) => {
-    const currentApps = JSON.parse(localStorage.getItem('appointments') || '[]');
-    const newApp = {
-      id: `app-${Date.now()}`,
-      roomId,
-      roomTitle: title,
-      date: new Date().toLocaleDateString('vi-VN'),
-      time: '14:00',
-      status: 'pending',
-    };
-    localStorage.setItem('appointments', JSON.stringify([...currentApps, newApp]));
+  const handleBookAppointment = async (roomId: string, title: string) => {
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(14, 0, 0, 0);
 
-    setAppointmentSuccess(title);
-    setTimeout(() => setAppointmentSuccess(null), 3000);
+      await api.post('/dashboard/appointments', {
+        roomId,
+        appointmentDate: tomorrow.toISOString(),
+        notes: "Đặt lịch từ Bản đồ Explorer"
+      });
+
+      setAppointmentSuccess(title);
+      setTimeout(() => setAppointmentSuccess(null), 3000);
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Đặt lịch hẹn thất bại.");
+    }
   };
 
   const createAirbnbMarker = (price: number, isVerified: boolean) => {
@@ -388,7 +415,9 @@ export default function ExploreMapPage() {
                   {/* Body Content */}
                   <div className="flex flex-col justify-between flex-1 min-w-0">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 group-hover:text-blue-400 transition-colors line-clamp-1">{room.title}</h4>
+                      <Link to={`/room/${room.id}`} className="hover:underline">
+                        <h4 className="text-xs font-bold text-slate-200 group-hover:text-blue-400 transition-colors line-clamp-1">{room.title}</h4>
+                      </Link>
                       <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">📍 {room.address}</p>
                       
                       {/* University tag */}
@@ -407,10 +436,10 @@ export default function ExploreMapPage() {
 
                       <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
                         <Link
-                          to="/tour-demo"
+                          to={`/room/${room.id}`}
                           className="p-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-300 rounded-lg text-[10px] font-bold hover:bg-purple-500 hover:text-white transition-colors"
                         >
-                          🔮 360°
+                          🔮 Chi tiết
                         </Link>
                         <button
                           onClick={() => handleBookAppointment(room.id, room.title)}
@@ -471,10 +500,10 @@ export default function ExploreMapPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-emerald-600 font-extrabold text-sm">{(room.price / 1000000).toFixed(1)}M / tháng</span>
                       <Link 
-                        to="/tour-demo" 
+                        to={`/room/${room.id}`} 
                         className="px-2 py-1 bg-purple-600 text-white text-[9px] font-bold rounded hover:bg-purple-700 no-underline"
                       >
-                        Xem 360°
+                        Chi tiết
                       </Link>
                     </div>
                   </div>

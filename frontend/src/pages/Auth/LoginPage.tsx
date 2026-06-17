@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { api } from '../../services/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -14,16 +15,17 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     
-    setTimeout(() => {
-      login('mock-jwt-token', role, {
-        id: role === 'tenant' ? 't-1' : 'l-1',
-        name: role === 'tenant' ? 'Tân Sinh Viên' : 'Chủ Trọ Uy Tín',
-        email,
-        isVerified: role === 'landlord' ? false : undefined
+    api.post('/auth/login', { email, password })
+      .then((res) => {
+        const { token, role: resRole, user: resUser } = res.data;
+        login(token, resRole, resUser);
+        setLoading(false);
+        navigate(resRole === 'tenant' ? '/' : (resUser.isVerified ? '/landlord/dashboard' : '/kyc'));
+      })
+      .catch((err) => {
+        alert(err.response?.data?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+        setLoading(false);
       });
-      setLoading(false);
-      navigate(role === 'tenant' ? '/' : '/kyc');
-    }, 800);
   };
 
   return (
